@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Count, Avg
 
 class Vendor(models.Model):
     name = models.CharField(max_length=255)
@@ -35,6 +36,44 @@ class HistoricalPerformance(models.Model):
     quality_rating_avg = models.FloatField()
     average_response_time = models.FloatField()
     fulfillment_rate = models.FloatField()
+    
+    @classmethod
+    def update_vendor_performance(cls, vendor):
+        # Calculate and update on-time delivery rate
+        completed_orders = PurchaseOrder.objects.filter(vendor=vendor, status='completed')
+        total_completed_orders = completed_orders.count()
+        on_time_delivery_orders = completed_orders.filter(delivery_date__lte=models.F('acknowledgment_date'))
+        on_time_delivery_rate = (on_time_delivery_orders.count() / total_completed_orders) * 100 if total_completed_orders > 0 else 0
+        vendor.on_time_delivery_rate = on_time_delivery_rate
+
+        # Calculate and update quality rating average
+        quality_ratings = completed_orders.exclude(quality_rating__isnull=True).aggregate(quality_rating_avg=Avg('quality_rating'))
+        vendor.quality_rating_avg = quality_ratings['quality_rating_avg'] if quality_ratings['quality_rating_avg'] is not None else 0.0
+
+        # Calculate and update average response time
+        response_times = completed_orders.exclude(acknowledgment_date__isnull=True).aggregate(avg_response_time=Avg(models.F('acknowledgment_date') - models.F('issue_date')))
+        vendor.average_response_time = response_times['avg_response_time'].total_seconds() / 3600 if response_times['avg_response_time'] is not None else 0.0
+
+        # Calculate and update fulfillment rate
+        fulfilled_orders = completed_orders.filter(status='completed')
+        fulfillment_rate = (fulfilled_orders.count() / total_completed_orders) * 100 if total_completed_orders > 0 else 0
+        vendor.fulfillment_rate = fulfillment_rate
+
+        # Save the updated vendor metrics
+        vendor.save()
+
+    @classmethod
+    def record_historical_performance(cls, vendor):
+        # Record historical performance data
+        historical_performance = HistoricalPerformance(
+            vendor=vendor,
+            date=models.DateTimeField.now(),
+            on_time_delivery_rate=vendor.on_time_delivery_rate,
+            quality_rating_avg=vendor.quality_rating_avg,
+            average_response_time=vendor.average_response_time,
+            fulfillment_rate=vendor.fulfillment_rate
+        )
+        historical_performance.save()
 
     def __str__(self):
         return f"{self.vendor.name} - {self.date}"
