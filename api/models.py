@@ -1,6 +1,12 @@
 from django.db import models
 from django.db.models import Count, Avg
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 
+def validate_positive(value):
+    if value < 0:
+        raise ValidationError("Value must be non-negative.")
+    
 class Vendor(models.Model):
     name = models.CharField(max_length=255)
     contact_details = models.TextField()
@@ -10,6 +16,14 @@ class Vendor(models.Model):
     quality_rating_avg = models.FloatField(default=0.0)
     average_response_time = models.FloatField(default=0.0)
     fulfillment_rate = models.FloatField(default=0.0)
+
+    def clean(self):
+        if self.on_time_delivery_rate > 100 or self.quality_rating_avg > 100 or self.fulfillment_rate > 100:
+            raise ValidationError("Percentage values cannot exceed 100%.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()  # Ensure clean() is called before saving
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -25,6 +39,17 @@ class PurchaseOrder(models.Model):
     quality_rating = models.FloatField(null=True, blank=True)
     issue_date = models.DateTimeField()
     acknowledgment_date = models.DateTimeField(null=True, blank=True)
+
+    def clean(self):
+        if self.delivery_date < self.order_date:
+            raise ValidationError("Delivery date must be equal to or after the order date.")
+
+        if self.acknowledgment_date and self.acknowledgment_date < self.issue_date:
+            raise ValidationError("Acknowledgment date must be equal to or after the issue date.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()  # Ensure clean() is called before saving
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.po_number} - {self.vendor.name}"
