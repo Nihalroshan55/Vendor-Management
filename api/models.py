@@ -6,7 +6,7 @@ from django.utils import timezone
 def validate_positive(value):
     if value < 0:
         raise ValidationError("Value must be non-negative.")
-    
+     
 class Vendor(models.Model):
     name = models.CharField(max_length=255)
     contact_details = models.TextField()
