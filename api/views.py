@@ -5,6 +5,12 @@ from api.serializers import VendorSerializer,PurchaseOrderSerializer,HistoricalP
 class VendorViewSet(viewsets.ModelViewSet):
     queryset = Vendor.objects.all()
     serializer_class = VendorSerializer
+    
+    @action(detail=True, methods=['get'])
+    def performance(self, request, pk=None):
+        vendor = self.get_object()
+        serializer = HistoricalPerformanceSerializer(vendor.historicalperformance_set.all(), many=True)
+        return Response(serializer.data)
 
 class PurchaseOrderViewSet(viewsets.ModelViewSet):
     queryset = PurchaseOrder.objects.all()
