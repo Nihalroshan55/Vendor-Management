@@ -1,5 +1,7 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import VendorViewSet,PurchaseOrderViewSet
 
-urlpatterns = [
-    
-]
+router = DefaultRouter()
+router.register(r'vendors', VendorViewSet, basename='vendor')
+router.register(r'purchase_orders', PurchaseOrderViewSet, basename='purchaseorder')
