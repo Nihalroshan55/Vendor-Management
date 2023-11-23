@@ -4,22 +4,22 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 def validate_positive(value):
-    if value < 0:
-        raise ValidationError("Value must be non-negative.")
+    if value < 0 or value > 100:
+        raise ValidationError("Value must be between 0 and 100.")
      
 class Vendor(models.Model):
     name = models.CharField(max_length=255)
     contact_details = models.TextField()
     address = models.TextField()
     vendor_code = models.CharField(max_length=50, unique=True)
-    on_time_delivery_rate = models.FloatField(default=0.0)
-    quality_rating_avg = models.FloatField(default=0.0)
-    average_response_time = models.FloatField(default=0.0)
-    fulfillment_rate = models.FloatField(default=0.0)
+    on_time_delivery_rate = models.FloatField(default=0.0, validators=[validate_positive])
+    quality_rating_avg = models.FloatField(default=0.0, validators=[validate_positive])
+    average_response_time = models.FloatField(default=0.0, validators=[validate_positive])
+    fulfillment_rate = models.FloatField(default=0.0, validators=[validate_positive])
 
     def clean(self):
         if self.on_time_delivery_rate > 100 or self.quality_rating_avg > 100 or self.fulfillment_rate > 100:
-            raise ValidationError("Percentage values cannot exceed 100%.")
+            raise ValidationError("Percentage values cannot exceed 100.")
 
     def save(self, *args, **kwargs):
         self.full_clean()  # Ensure clean() is called before saving
